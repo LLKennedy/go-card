@@ -26,7 +26,7 @@ None
 Installation
 ------------
 
-    go get github.com/sf1/go-card/smartcard
+    go get github.com/LLKennedy/go-card/smartcard
 
 Usage
 -----
