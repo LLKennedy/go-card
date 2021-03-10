@@ -11,14 +11,22 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	readers, err := ctx.ListReaders()
+	if err != nil {
+		log.Fatalln(err)
+	}
+	if len(readers) < 1 {
+		log.Fatalln("no readers")
+	}
+	reader := readers[0]
 	closeChan := make(chan struct{}, 1)
-	results, errors := ctx.WaitForChanges(closeChan)
+	errors := reader.WaitForChanges(closeChan)
 	for {
-		select {
-		case res := <-results:
-			log.Printf("%#v\n", res)
-		case err := <-errors:
-			log.Printf("error: %v\n", err)
+		err = <-errors
+		if err != nil {
+			log.Fatalln(err)
+		} else {
+			log.Println("change")
 		}
 	}
 }

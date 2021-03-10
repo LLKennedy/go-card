@@ -75,7 +75,7 @@ func (ctx *Context) WaitForChanges(closeChan <-chan struct{}) (<-chan []pcsc.Rea
 			resChan := make(chan []pcsc.ReaderState, 1)
 			errChan := make(chan error, 1)
 			go func() {
-				states, statesErr := ctx.winscard.GetStatusChange(ctx.ctxID, pcsc.SCARD_INFINITE, pcsc.SCARD_STATE_UNAWARE)
+				states, statesErr := ctx.winscard.GetStatusChangeAll(ctx.ctxID, pcsc.SCARD_INFINITE, pcsc.SCARD_STATE_UNAWARE)
 				if statesErr != nil {
 					errChan <- statesErr
 				} else {
@@ -207,6 +207,32 @@ func (r *Reader) Connect() (*Card, error) {
 		cardID:  cardID,
 		sendPCI: pci,
 	}, nil
+}
+
+// WaitForChanges waits for a change in the reader
+func (r *Reader) WaitForChanges(closeChan <-chan struct{}) <-chan error {
+	errOut := make(chan error, 1)
+	go func() {
+		for {
+			errChan := make(chan error, 1)
+			go func() {
+				statesErr := r.context.winscard.GetStatusChange(r.context.ctxID, pcsc.SCARD_INFINITE, []pcsc.ReaderState{{
+					Reader:       r.Name(),
+					CurrentState: pcsc.SCARD_STATE_UNAWARE,
+				}})
+				errChan <- statesErr
+			}()
+			select {
+			case err := <-errChan:
+				errOut <- err
+			case <-closeChan:
+				close(errChan)
+				return
+			}
+			close(errChan)
+		}
+	}()
+	return errOut
 }
 
 // Smart card.
